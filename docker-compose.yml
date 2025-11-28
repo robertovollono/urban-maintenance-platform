@@ -1,0 +1,58 @@
+services:
+  # 1. Database: PostgreSQL con PostGIS
+  # Essenziale per la georeferenziazione e le query spaziali [cite: 20]
+  urban-db:
+    image: postgis/postgis:15-3.3
+    container_name: urban-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=urban_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. Message Broker: RabbitMQ
+  # Fondamentale per disaccoppiare i servizi (es. Ticket -> Notifica)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: urban-rabbitmq
+    ports:
+      - "5672:5672"   # Porta protocollo AMQP
+      - "15672:15672" # Dashboard Web
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=password
+
+  # 3. Object Storage: MinIO (S3 Compatible)
+  # Per salvare le foto allegate ai ticket. Non salvare file nel DB! [cite: 21]
+  minio:
+    image: minio/minio
+    container_name: urban-minio
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # Console Web
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  # 4. Mail Server Mock: MailHog
+  # Per testare l'invio email del Notification Service senza spammare [cite: 133]
+  mailhog:
+    image: mailhog/mailhog
+    container_name: urban-mailhog
+    ports:
+      - "1025:1025" # SMTP port (usa questa nel codice Java)
+      - "8025:8025" # Web UI (leggi qui le mail inviate)
+
+  # Nota: Non sto includendo Keycloak ora per non appesantire troppo.
+  # Inizieremo con un Auth Service custom semplice basato su JWT,
+  # poi se avanza tempo migreremo a Keycloak.
+
+volumes:
+  postgres_data:
+  minio_data:
